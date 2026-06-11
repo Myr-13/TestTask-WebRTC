@@ -5,12 +5,14 @@ const roomInput = document.querySelector("#room-input");
 const joinBtn = document.querySelector("#join-button");
 const leaveBtn = document.querySelector("#leave-button");
 const cameraBtn = document.querySelector("#open-camera-button");
+const layerControls = document.querySelector("#layer-controls");
 
 let localStream = null;
 let pc = null;
 let ws = null;
 let roomName = "";
 let amOfferer = false;
+let currentLayer = "l";
 
 function log(msg) {
     statusEl.textContent += msg + "\n";
@@ -23,6 +25,7 @@ function resetState() {
     }
     amOfferer = false;
     remoteVideo.srcObject = null;
+    layerControls.style.display = "none";
     joinBtn.disabled = false;
     leaveBtn.disabled = true;
     roomInput.disabled = false;
@@ -77,19 +80,48 @@ function addLocalTracks() {
     localStream.getTracks().forEach((track) => pc.addTrack(track, localStream));
 }
 
-async function handleOffer(msg) {
-    if (!pc) {
-        createPC();
-        addLocalTracks();
+async function setLayer(rid) {
+    if (!pc) return;
+    const sender = pc.getSenders().find((s) => s.track && s.track.kind === "video");
+    if (!sender) return;
+    const params = sender.getParameters();
+    if (!params.encodings) return;
+    const config = { h: { scale: 1, bitrate: 2_000_000 }, m: { scale: 2, bitrate: 500_000 }, l: { scale: 4, bitrate: 100_000 } }[rid];
+    if (!config) return;
+    params.encodings[0].scaleResolutionDownBy = config.scale;
+    params.encodings[0].maxBitrate = config.bitrate;
+    try {
+        await sender.setParameters(params);
+        currentLayer = rid;
+        log("Sending layer: " + rid + " (" + config.scale + "x downscale)");
+    } catch (e) {
+        log("setLayer error: " + e.message);
     }
-    await pc.setRemoteDescription(new RTCSessionDescription(msg.data));
-    await pc.setLocalDescription(await pc.createAnswer());
-    ws.send(JSON.stringify({ type: "answer", room: roomName, data: pc.localDescription }));
+}
+
+async function handleOffer(msg) {
+    try {
+        if (!pc) {
+            createPC();
+            addLocalTracks();
+        }
+        await pc.setRemoteDescription(new RTCSessionDescription(msg.data));
+        await pc.setLocalDescription(await pc.createAnswer());
+        ws.send(JSON.stringify({ type: "answer", room: roomName, data: pc.localDescription }));
+        log("Answer sent");
+    } catch (e) {
+        log("handleOffer error: " + e.message);
+    }
 }
 
 async function handleAnswer(msg) {
-    if (!pc) return;
-    await pc.setRemoteDescription(new RTCSessionDescription(msg.data));
+    try {
+        if (!pc) return;
+        await pc.setRemoteDescription(new RTCSessionDescription(msg.data));
+        log("Remote description set");
+    } catch (e) {
+        log("handleAnswer error: " + e.message);
+    }
 }
 
 async function handleCandidate(msg) {
@@ -124,6 +156,7 @@ function connectSignaling(room) {
         switch (msg.type) {
             case "joined":
                 log("Joined as peer " + msg.peer);
+                layerControls.style.display = "flex";
                 if (msg.peer === "2") {
                     amOfferer = false;
                     createPC();
@@ -148,6 +181,10 @@ function connectSignaling(room) {
 
             case "ice-candidate":
                 await handleCandidate(msg);
+                break;
+
+            case "set-layer":
+                await setLayer(msg.data.rid);
                 break;
 
             case "peer-left":
@@ -181,5 +218,16 @@ leaveBtn.addEventListener("click", () => {
         ws.close();
     }
     resetState();
+    layerControls.style.display = "none";
     log("Left room");
+});
+
+document.querySelectorAll(".layer-btn").forEach((btn) => {
+    btn.addEventListener("click", () => {
+        const rid = btn.dataset.rid;
+        document.querySelectorAll(".layer-btn").forEach((b) => b.classList.remove("active"));
+        btn.classList.add("active");
+        log("Requesting layer: " + rid + " from remote");
+        ws.send(JSON.stringify({ type: "set-layer", room: roomName, data: { rid } }));
+    });
 });

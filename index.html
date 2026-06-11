@@ -16,7 +16,14 @@
 
     <div class="videos">
         <video id="your-video" autoplay playsinline muted></video>
-        <video id="remote-video" autoplay playsinline></video>
+        <video id="remote-video" autoplay playsinline muted></video>
+    </div>
+
+    <div class="layers" id="layer-controls" style="display:none">
+        <span>Receive layer:</span>
+        <button class="layer-btn" data-rid="h">High</button>
+        <button class="layer-btn" data-rid="m">Medium</button>
+        <button class="layer-btn active" data-rid="l">Low</button>
     </div>
 
     <pre id="status"></pre>

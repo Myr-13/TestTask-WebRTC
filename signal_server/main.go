@@ -139,7 +139,13 @@ func (s *Server) handleWebSocket(w http.ResponseWriter, r *http.Request) {
 			currentRoom = msg.Room
 			room.mu.Unlock()
 
-		case "offer", "answer", "ice-candidate":
+		case "leave":
+			if currentRoom != "" {
+				s.leaveRoom(currentRoom, conn, peerIndex)
+				currentRoom = ""
+			}
+
+		default:
 			if currentRoom == "" {
 				conn.WriteJSON(map[string]string{"type": "error", "message": "join a room first"})
 				continue
@@ -155,12 +161,6 @@ func (s *Server) handleWebSocket(w http.ResponseWriter, r *http.Request) {
 			other := room.other(peerIndex)
 			if other != nil {
 				other.WriteMessage(websocket.TextMessage, raw)
-			}
-
-		case "leave":
-			if currentRoom != "" {
-				s.leaveRoom(currentRoom, conn, peerIndex)
-				currentRoom = ""
 			}
 		}
 	}

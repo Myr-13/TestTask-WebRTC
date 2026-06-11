@@ -60,6 +60,29 @@ video {
     background: #000;
 }
 
+.layers {
+    display: flex;
+    gap: 8px;
+    justify-content: center;
+    align-items: center;
+    margin-bottom: 15px;
+}
+
+.layers span {
+    font-size: 0.85rem;
+    color: #999;
+}
+
+.layer-btn {
+    padding: 4px 14px;
+    font-size: 0.8rem;
+}
+
+.layer-btn.active {
+    background: #3b6ea0;
+    border-color: #4d8fd4;
+}
+
 #status {
     background: #1a1a1a;
     border: 1px solid #333;
