@@ -1,0 +1,26 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8" />
+    <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+    <h1>WebRTC Peer-to-Peer</h1>
+
+    <div class="controls">
+        <button id="open-camera-button">Open camera</button>
+        <input id="room-input" type="text" placeholder="Room name" />
+        <button id="join-button">Join room</button>
+        <button id="leave-button" disabled>Leave</button>
+    </div>
+
+    <div class="videos">
+        <video id="your-video" autoplay playsinline muted></video>
+        <video id="remote-video" autoplay playsinline></video>
+    </div>
+
+    <pre id="status"></pre>
+
+    <script src="./index.js"></script>
+</body>
+</html>
